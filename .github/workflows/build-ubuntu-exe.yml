@@ -4,6 +4,9 @@ on:
   release:
     types: [published]   # Run when a release is published
 
+permissions:
+  contents: write # Allow writing to contents for attaching artifacts to releases
+
 jobs:
   build-ubuntu-exe:
     runs-on: ubuntu-latest
