@@ -34,15 +34,9 @@ class MinMaxDifferenceMetric(BaseMetric):
         Returns:
             float: Range of differences (max - min)
         """
-        # Interpolate reference current at same potentials as test data
-        interp_ref_current = np.interp(
-            data_df["Potential_V"],
-            ref_data_df["Potential_V"],
-            ref_data_df["Current_A"]
-        )
 
         # Calculate difference
-        diff = data_df["Current_A"] - interp_ref_current
+        diff = data_df["Current_A"] - ref_data_df["Current_A"]
 
         # Return range (max - min)
         return diff.max() - diff.min()
