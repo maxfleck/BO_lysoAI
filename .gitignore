@@ -5,3 +5,10 @@ uv.lock
 
 build/*
 dist/*
+
+example/*/*
+example/*bin
+
+*.ipynb_checkpoints
+*.ipynb
+

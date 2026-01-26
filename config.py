@@ -12,13 +12,14 @@ DATA_OUTPUT_FILENAME = "data.csv"
 EXCEL_OUTPUT_FILENAME = "data.xlsx"
 SUPPORTED_EXTENSIONS = ['.csv']
 
-# Plot settings
-PLOT_DPI = 100
-PLOT_FIGSIZE = (8, 6)
+# Plot settings (Plotly)
 REFERENCE_LINE_WIDTH = 3
 REFERENCE_LINE_COLOR = 'magenta'
 TEST_LINE_ALPHA = 0.6
-PLOT_GRID_ALPHA = 0.3
+PLOT_TEMPLATE = 'plotly_dark'  # Dark theme to match app
+PLOT_EXPORT_WIDTH = 1200
+PLOT_EXPORT_HEIGHT = 800
+PLOT_EXPORT_SCALE = 2  # For high-res exports
 
 # UI settings
 WINDOW_WIDTH = 1200
