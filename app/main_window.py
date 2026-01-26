@@ -4,7 +4,7 @@ Main application window.
 
 import os
 import glob
-from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout,
+from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QApplication,
                               QProgressBar, QSplitter, QMessageBox, QLabel)
 from PyQt6.QtCore import Qt
 from app.widgets.drop_zone import DropZoneWidget
@@ -34,7 +34,10 @@ class MainWindow(QMainWindow):
 
         # Window settings
         self.setWindowTitle(f"{config.APP_NAME} v{config.APP_VERSION}")
-        self.setGeometry(100, 100, config.WINDOW_WIDTH, config.WINDOW_HEIGHT)
+        screen = QApplication.primaryScreen().availableGeometry()
+        screen_height = screen.height()
+        self.setGeometry(100, 0, screen_height, screen_height)
+        self.setMaximumWidth(screen_height)
 
         # Setup UI
         self.setup_ui()
@@ -49,7 +52,12 @@ class MainWindow(QMainWindow):
         # Main layout
         layout = QVBoxLayout(central_widget)
 
-        # Instructions text
+        # Top row: Log (left) | Instructions (right)
+        top_row = QSplitter(Qt.Orientation.Horizontal)
+
+        self.status_log = StatusLogWidget()
+        self.status_log.setMaximumHeight(100)
+
         instructions = QLabel()
         instructions.setText(
             "<b>How to use:</b><br>"
@@ -60,6 +68,7 @@ class MainWindow(QMainWindow):
             "and plot files (PNG/PDF) saved in the same folder as your CSV files."
         )
         instructions.setWordWrap(True)
+        instructions.setMaximumHeight(100)
         instructions.setStyleSheet("""
             QLabel {
                 background-color: #1a1a1a;
@@ -71,21 +80,25 @@ class MainWindow(QMainWindow):
                 font-size: 10pt;
             }
         """)
-        layout.addWidget(instructions)
 
-        # Drop zone at top
+        top_row.addWidget(self.status_log)
+        top_row.addWidget(instructions)
+        top_row.setSizes([300, 700])
+        layout.addWidget(top_row)
+
+        # Drop zone (compact)
         self.drop_zone = DropZoneWidget()
+        self.drop_zone.setFixedHeight(config.DROP_ZONE_MIN_HEIGHT)
         layout.addWidget(self.drop_zone)
 
-        # Splitter: Plot (left) | Results table (right)
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-
+        # Plot/Table splitter (plot maximized)
         self.plot_widget = PlotWidget()
         self.results_table = ResultsTableWidget()
 
+        splitter = QSplitter(Qt.Orientation.Vertical)
         splitter.addWidget(self.plot_widget)
         splitter.addWidget(self.results_table)
-        splitter.setSizes([700, 500])
+        splitter.setSizes([600, 150])
 
         layout.addWidget(splitter, stretch=1)
 
@@ -93,10 +106,6 @@ class MainWindow(QMainWindow):
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
         layout.addWidget(self.progress_bar)
-
-        # Status log
-        self.status_log = StatusLogWidget()
-        layout.addWidget(self.status_log)
 
     def connect_signals(self):
         """Connect signals to slots."""

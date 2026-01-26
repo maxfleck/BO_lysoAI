@@ -42,7 +42,6 @@ class DropZoneWidget(QWidget):
                 border: 4px solid {config.DROP_ZONE_BORDER_COLOR};
                 border-radius: 10px;
                 background-color: {config.DROP_ZONE_BG_COLOR};
-                min-height: {config.DROP_ZONE_MIN_HEIGHT}px;
             }}
         """)
 
@@ -53,7 +52,6 @@ class DropZoneWidget(QWidget):
                 border: 4px solid {config.DROP_ZONE_HOVER_COLOR};
                 border-radius: 10px;
                 background-color: {config.DROP_ZONE_HOVER_BG_COLOR};
-                min-height: {config.DROP_ZONE_MIN_HEIGHT}px;
             }}
         """)
 
