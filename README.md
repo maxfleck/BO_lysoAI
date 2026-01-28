@@ -7,7 +7,7 @@ Electrochemical Data Analysis Tool with GUI for processing cyclic voltammetry da
 - Drag-and-drop CSV file interface
 - Automatic reference file detection
 - Extensible metrics system
-- Real-time plotting with matplotlib
+- Real-time plotting with plotly
 - Export to CSV and Excel
 - Windows executable support via PyInstaller
 
@@ -143,7 +143,7 @@ BO_lysoAI/
 
 The application calculates two metrics by default:
 
-1. **Sum_Abs_Difference**: Sum of absolute differences between test and reference curves
+1. **Sum_Abs_Difference**: Integral of absolute differences between test and reference curves
 2. **Min_Max_Range**: Range (max - min) of differences between curves
 
 ## Data Format
@@ -159,8 +159,16 @@ The application reads CSV files with the format from CHI760D instruments:
 - Check that the directory is writable
 - Look at the status log for error messages
 
-### Executable not working on Windows
-- Build the executable on Windows (cross-compilation not recommended)
-- Ensure all dependencies are included in the spec file
-- Test with `--debug all` flag for diagnostics
+## TO DO
 
+- plotly does not save or auto-save the plots
+- only show auto-processed rows in UI (?)
+- generalized data-reader
+    - general purpose csv
+    - binary files converter (upon drag and drop)
+    - ...only convert binaries. Do not show them.
+- more dynamic column naming? -> nooo
+- improve metric names (Sum_Abs_Difference iiiih)
+- more interactive plot (adjust line thickness etc)
+- normalize integration with potential range
+- tangent for current diffs (max vs. base current)
