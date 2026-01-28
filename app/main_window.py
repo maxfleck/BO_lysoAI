@@ -4,8 +4,8 @@ Main application window.
 
 import os
 import glob
-from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QApplication,
-                              QProgressBar, QSplitter, QMessageBox, QLabel)
+from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QApplication,
+                              QProgressBar, QSplitter, QMessageBox, QLabel, QPushButton)
 from PyQt6.QtCore import Qt
 from app.widgets.drop_zone import DropZoneWidget
 from app.widgets.plot_widget import PlotWidget
@@ -95,9 +95,25 @@ class MainWindow(QMainWindow):
         self.plot_widget = PlotWidget()
         self.results_table = ResultsTableWidget()
 
+        # Bottom row: Table (90%) | Buttons (10%)
+        bottom_widget = QWidget()
+        bottom_layout = QHBoxLayout(bottom_widget)
+        bottom_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Button column
+        button_column = QVBoxLayout()
+        self.intersection_btn = QPushButton("Calculate\nIntersections")
+        self.intersection_btn.setMinimumHeight(60)
+        self.intersection_btn.clicked.connect(self._calculate_intersections)
+        button_column.addWidget(self.intersection_btn)
+        button_column.addStretch()  # Push buttons to top
+
+        bottom_layout.addWidget(self.results_table, 90)
+        bottom_layout.addLayout(button_column, 10)
+
         splitter = QSplitter(Qt.Orientation.Vertical)
         splitter.addWidget(self.plot_widget)
-        splitter.addWidget(self.results_table)
+        splitter.addWidget(bottom_widget)
         splitter.setSizes([600, 150])
 
         layout.addWidget(splitter, stretch=1)
@@ -113,6 +129,7 @@ class MainWindow(QMainWindow):
         self.plot_widget.save_error.connect(
             lambda msg: self.status_log.log(msg, 'ERROR')
         )
+        self.plot_widget.intersection_calculated.connect(self._on_intersections_calculated)
 
     def on_files_dropped(self, filepaths):
         """
@@ -299,4 +316,15 @@ class MainWindow(QMainWindow):
             self.status_log.log(f"Results saved to {os.path.basename(excel_path)}", 'SUCCESS')
         except Exception as e:
             self.status_log.log(f"Error saving results: {str(e)}", 'ERROR')
+
+    def _calculate_intersections(self):
+        """Calculate intersections for all drawn lines."""
+        self.plot_widget.calculate_all_intersections()
+
+    def _on_intersections_calculated(self, count):
+        """Log intersection calculation result."""
+        if count > 0:
+            self.status_log.log(f"Found {count} intersection(s)", 'SUCCESS')
+        else:
+            self.status_log.log("No intersections found (no lines drawn?)", 'INFO')
 

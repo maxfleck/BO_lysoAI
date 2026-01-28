@@ -5,16 +5,32 @@ Interactive plot widget using Plotly for displaying electrochemical curves.
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy, QFileDialog
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWebEngineCore import QWebEngineProfile
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWebChannel import QWebChannel
+from PyQt6.QtCore import pyqtSignal, QObject, pyqtSlot
 import plotly.graph_objects as go
 import plotly.io as pio
+import numpy as np
 import config
+
+
+class PlotBridge(QObject):
+    """Bridge for JavaScript to Python communication."""
+
+    def __init__(self, plot_widget):
+        super().__init__()
+        self.plot_widget = plot_widget
+
+    @pyqtSlot(float, float, float, float)
+    def on_line_drawn(self, x0, y0, x1, y1):
+        """Called from JavaScript when a line is drawn."""
+        self.plot_widget.handle_line_drawn(x0, y0, x1, y1)
 
 
 class PlotWidget(QWidget):
     """Widget for embedded interactive Plotly plotting."""
 
     save_error = pyqtSignal(str)  # Signal to report save errors
+    intersection_calculated = pyqtSignal(int)  # Reports number of intersections found
 
     def __init__(self):
         """Initialize plot widget."""
@@ -30,6 +46,18 @@ class PlotWidget(QWidget):
 
         # Store current figure for saving
         self.current_fig = None
+
+        # Store curve data for intersection calculations
+        self.curve_data = {}
+
+        # Store drawn lines for intersection calculations
+        self.drawn_lines = []  # List of (x0, y0, x1, y1) tuples
+
+        # Setup QWebChannel for JS-Python communication
+        self.channel = QWebChannel()
+        self.bridge = PlotBridge(self)
+        self.channel.registerObject('bridge', self.bridge)
+        self.web_view.page().setWebChannel(self.channel)
 
         # Create layout
         layout = QVBoxLayout()
@@ -61,6 +89,12 @@ class PlotWidget(QWidget):
             test_data_list: List of tuples (data_df, filename)
         """
         fig = go.Figure()
+
+        # Store curve data for intersection calculations
+        self.curve_data = {'Reference': reference_data}
+        for data, filename in test_data_list:
+            if 'BARE' not in filename.upper() and 'REFERENCE' not in filename.upper():
+                self.curve_data[filename] = data
 
         # Plot reference curve with thick magenta line
         fig.add_trace(go.Scatter(
@@ -171,6 +205,7 @@ class PlotWidget(QWidget):
             ),
             hovermode='closest',
             margin=dict(r=150),  # Extra margin for legend
+            dragmode='drawline',  # Auto-select draw line tool
             newshape=dict(
                 line=dict(color='red', width=2),
                 #layer='below',  # Draw shapes behind traces
@@ -210,7 +245,137 @@ class PlotWidget(QWidget):
             full_html=True
         )
 
+        # Inject JavaScript for QWebChannel communication
+        webchannel_js = '''
+<script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+<script>
+var bridge = null;
+new QWebChannel(qt.webChannelTransport, function(channel) {
+    bridge = channel.objects.bridge;
+});
+
+// Track shapes to detect new ones
+var previousShapeCount = 0;
+
+document.addEventListener('DOMContentLoaded', function() {
+    var plotDiv = document.getElementsByClassName('plotly-graph-div')[0];
+    if (plotDiv) {
+        plotDiv.on('plotly_relayout', function(data) {
+            if (bridge && plotDiv.layout && plotDiv.layout.shapes) {
+                var shapes = plotDiv.layout.shapes;
+                if (shapes.length > previousShapeCount) {
+                    // New shape added
+                    var last = shapes[shapes.length - 1];
+                    if (last && last.type === 'line') {
+                        bridge.on_line_drawn(last.x0, last.y0, last.x1, last.y1);
+                    }
+                }
+                previousShapeCount = shapes.length;
+            }
+        });
+    }
+});
+</script>
+'''
+        # Insert webchannel script before closing body tag
+        html = html.replace('</body>', webchannel_js + '</body>')
+
         self.web_view.setHtml(html)
+
+    def handle_line_drawn(self, x0, y0, x1, y1):
+        """Store line coordinates when drawn."""
+        self.drawn_lines.append((x0, y0, x1, y1))
+
+    def calculate_all_intersections(self):
+        """Calculate intersections for all drawn lines."""
+        if not self.current_fig or not self.curve_data or not self.drawn_lines:
+            self.intersection_calculated.emit(0)
+            return
+
+        count = 0
+        for x0, y0, x1, y1 in self.drawn_lines:
+            # Add the line itself in grey
+            self.current_fig.add_trace(go.Scatter(
+                x=[x0, x1],
+                y=[y0, y1],
+                mode='lines',
+                line=dict(color='grey', width=2),
+                showlegend=False,
+                hoverinfo='skip'
+            ))
+
+            # Add intersection markers
+            intersections = self._find_intersections(x0, y0, x1, y1)
+            for name, x, y in intersections:
+                self.current_fig.add_trace(go.Scatter(
+                    x=[x],
+                    y=[y],
+                    mode='markers',
+                    marker=dict(size=14, color='yellow', symbol='x',
+                               line=dict(width=2, color='black')),
+                    name='Intersection',
+                    hovertemplate=f'<b>{name}</b><br>Potential: {x:.4f} V<br>Current: {y:.2e} A<extra></extra>',
+                    showlegend=False
+                ))
+                count += 1
+
+        self._render_figure(self.current_fig)
+        self.intersection_calculated.emit(count)
+
+    def _find_intersections(self, x0, y0, x1, y1):
+        """
+        Find where the drawn line intersects with all curves.
+
+        Args:
+            x0, y0: Start point of the line
+            x1, y1: End point of the line
+
+        Returns:
+            List of tuples (curve_name, x, y) for each intersection
+        """
+        intersections = []
+
+        for name, data in self.curve_data.items():
+            x_vals = data[config.POTENTIAL_COLUMN].values
+            y_vals = data[config.CURRENT_COLUMN].values
+
+            # Check each segment of the curve
+            for i in range(len(x_vals) - 1):
+                pt = self._line_segment_intersection(
+                    x0, y0, x1, y1,
+                    x_vals[i], y_vals[i], x_vals[i + 1], y_vals[i + 1]
+                )
+                if pt is not None:
+                    intersections.append((name, pt[0], pt[1]))
+
+        return intersections
+
+    def _line_segment_intersection(self, x1, y1, x2, y2, x3, y3, x4, y4):
+        """
+        Find intersection point between two line segments.
+
+        Line 1: (x1, y1) to (x2, y2)
+        Line 2: (x3, y3) to (x4, y4)
+
+        Returns:
+            (x, y) tuple if segments intersect, None otherwise
+        """
+        denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+
+        if abs(denom) < 1e-10:
+            # Lines are parallel
+            return None
+
+        t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom
+        u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom
+
+        # Check if intersection is within both segments
+        if 0 <= t <= 1 and 0 <= u <= 1:
+            x = x1 + t * (x2 - x1)
+            y = y1 + t * (y2 - y1)
+            return (x, y)
+
+        return None
 
     def _handle_download(self, download):
         """Handle download requests from Plotly toolbar with file dialog."""
