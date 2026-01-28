@@ -171,6 +171,10 @@ class PlotWidget(QWidget):
             ),
             hovermode='closest',
             margin=dict(r=150),  # Extra margin for legend
+            newshape=dict(
+                line=dict(color='red', width=2),
+                #layer='below',  # Draw shapes behind traces
+            )
         )
 
         self._render_figure(fig)
@@ -186,7 +190,7 @@ class PlotWidget(QWidget):
 
         # Configure interactivity
         plotly_config = {
-            'editable': True,  # Allow editing axis labels and legend
+            'editable': False,  # Disabled to allow eraseshape to work
             'displayModeBar': True,
             'modeBarButtonsToAdd': ['drawline', 'eraseshape'],
             'modeBarButtonsToRemove': ['lasso2d', 'select2d'],
@@ -262,3 +266,4 @@ class PlotWidget(QWidget):
         except Exception as e:
             self.save_error.emit(f"Error saving plot: {str(e)}")
             return False
+
