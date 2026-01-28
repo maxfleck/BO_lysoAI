@@ -2,8 +2,10 @@
 Interactive plot widget using Plotly for displaying electrochemical curves.
 """
 
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy, QFileDialog
 from PyQt6.QtWebEngineWidgets import QWebEngineView
+from PyQt6.QtWebEngineCore import QWebEngineProfile
+from PyQt6.QtCore import pyqtSignal
 import plotly.graph_objects as go
 import plotly.io as pio
 import config
@@ -12,6 +14,8 @@ import config
 class PlotWidget(QWidget):
     """Widget for embedded interactive Plotly plotting."""
 
+    save_error = pyqtSignal(str)  # Signal to report save errors
+
     def __init__(self):
         """Initialize plot widget."""
         super().__init__()
@@ -19,6 +23,10 @@ class PlotWidget(QWidget):
         # Create web view for Plotly HTML
         self.web_view = QWebEngineView()
         self.web_view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        # Enable downloads from Plotly toolbar
+        profile = QWebEngineProfile.defaultProfile()
+        profile.downloadRequested.connect(self._handle_download)
 
         # Store current figure for saving
         self.current_fig = None
@@ -180,6 +188,7 @@ class PlotWidget(QWidget):
         plotly_config = {
             'editable': True,  # Allow editing axis labels and legend
             'displayModeBar': True,
+            'modeBarButtonsToAdd': ['drawline', 'eraseshape'],
             'modeBarButtonsToRemove': ['lasso2d', 'select2d'],
             'toImageButtonOptions': {
                 'format': 'png',
@@ -199,6 +208,34 @@ class PlotWidget(QWidget):
 
         self.web_view.setHtml(html)
 
+    def _handle_download(self, download):
+        """Handle download requests from Plotly toolbar with file dialog."""
+        suggested_name = download.downloadFileName() or "plot.png"
+        # Remove extension to allow user to pick format
+        base_name = suggested_name.rsplit('.', 1)[0]
+
+        filepath, selected_filter = QFileDialog.getSaveFileName(
+            self,
+            "Save Plot",
+            base_name,
+            "PNG Files (*.png);;PDF Files (*.pdf);;All Files (*)"
+        )
+
+        if filepath:
+            # Add extension based on selected filter if not present
+            if "png" in selected_filter.lower() and not filepath.lower().endswith('.png'):
+                filepath += '.png'
+            elif "pdf" in selected_filter.lower() and not filepath.lower().endswith('.pdf'):
+                filepath += '.pdf'
+            elif not filepath.lower().endswith(('.png', '.pdf')):
+                filepath += '.png'  # Default to PNG
+
+            download.setDownloadFileName(filepath.split('/')[-1])
+            download.setDownloadDirectory(filepath.rsplit('/', 1)[0])
+            download.accept()
+        else:
+            download.cancel()
+
     def save_plot(self, filepath):
         """
         Save plot to file (PNG or PDF).
@@ -210,7 +247,7 @@ class PlotWidget(QWidget):
             True if successful, False otherwise
         """
         if self.current_fig is None:
-            print("No plot to save")
+            self.save_error.emit("No plot to save")
             return False
 
         try:
@@ -223,5 +260,5 @@ class PlotWidget(QWidget):
             )
             return True
         except Exception as e:
-            print(f"Error saving plot: {str(e)}")
+            self.save_error.emit(f"Error saving plot: {str(e)}")
             return False

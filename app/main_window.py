@@ -110,6 +110,9 @@ class MainWindow(QMainWindow):
     def connect_signals(self):
         """Connect signals to slots."""
         self.drop_zone.files_dropped.connect(self.on_files_dropped)
+        self.plot_widget.save_error.connect(
+            lambda msg: self.status_log.log(msg, 'ERROR')
+        )
 
     def on_files_dropped(self, filepaths):
         """
