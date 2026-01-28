@@ -251,9 +251,21 @@ class MainWindow(QMainWindow):
 
     def update_display(self):
         """Update plot and results table."""
-        # Update results table with full DataFrame
+        # Get full DataFrame
         results_df = self.data_processor.get_results_dataframe()
-        self.results_table.update_results(results_df)
+
+        # Filter to show only key columns: Filename, is_reference, and metric columns
+        if not results_df.empty:
+            metric_names = self.metrics_registry.get_metric_names()
+            display_columns = ['Filename', 'is_reference'] + metric_names
+            # Only include columns that exist in the DataFrame
+            display_columns = [col for col in display_columns if col in results_df.columns]
+            display_df = results_df[display_columns]
+        else:
+            display_df = results_df
+
+        self.results_table.update_results(display_df)
+
 
         # Update plot - need to load CSV files for plot data
         if self.data_processor.reference_data is not None and self.file_manager is not None and not results_df.empty:
