@@ -67,6 +67,32 @@ class PlotWidget(QWidget):
             hovertemplate='<b>Reference</b><br>Potential: %{x:.4f} V<br>Current: %{y:.2e} A<extra></extra>'
         ))
 
+        # Find global min/max for reference
+        ref_min_idx = reference_data[config.CURRENT_COLUMN].idxmin()
+        ref_max_idx = reference_data[config.CURRENT_COLUMN].idxmax()
+
+        # Add min marker
+        fig.add_trace(go.Scatter(
+            x=[reference_data.loc[ref_min_idx, config.POTENTIAL_COLUMN]],
+            y=[reference_data.loc[ref_min_idx, config.CURRENT_COLUMN]],
+            mode='markers',
+            marker=dict(size=12, color='limegreen', symbol='triangle-down'),
+            name='Reference Min',
+            hovertemplate='<b>Reference Min</b><br>Potential: %{x:.4f} V<br>Current: %{y:.2e} A<extra></extra>',
+            showlegend=False
+        ))
+
+        # Add max marker
+        fig.add_trace(go.Scatter(
+            x=[reference_data.loc[ref_max_idx, config.POTENTIAL_COLUMN]],
+            y=[reference_data.loc[ref_max_idx, config.CURRENT_COLUMN]],
+            mode='markers',
+            marker=dict(size=12, color='limegreen', symbol='triangle-up'),
+            name='Reference Max',
+            hovertemplate='<b>Reference Max</b><br>Potential: %{x:.4f} V<br>Current: %{y:.2e} A<extra></extra>',
+            showlegend=False
+        ))
+
         # Plot test curves
         if test_data_list:
             # Use Plotly's default color sequence
@@ -89,6 +115,34 @@ class PlotWidget(QWidget):
                     line=dict(width=1.5),
                     opacity=config.TEST_LINE_ALPHA,
                     hovertemplate=f'<b>{filename}</b><br>Potential: %{{x:.4f}} V<br>Current: %{{y:.2e}} A<extra></extra>'
+                ))
+
+                # Find global min/max for this test curve
+                test_min_idx = data[config.CURRENT_COLUMN].idxmin()
+                test_max_idx = data[config.CURRENT_COLUMN].idxmax()
+
+                # Add min marker (triangle-down)
+                fig.add_trace(go.Scatter(
+                    x=[data.loc[test_min_idx, config.POTENTIAL_COLUMN]],
+                    y=[data.loc[test_min_idx, config.CURRENT_COLUMN]],
+                    mode='markers',
+                    # marker=dict(size=12, color=config.REFERENCE_LINE_COLOR, symbol='triangle-down'),
+                    marker=dict(size=12, color='limegreen', symbol='triangle-down'),
+                    name=f'{filename} Min',
+                    hovertemplate=f'<b>{filename} Min</b><br>Potential: %{{x:.4f}} V<br>Current: %{{y:.2e}} A<extra></extra>',
+                    showlegend=False
+                ))
+
+                # Add max marker (triangle-up)
+                fig.add_trace(go.Scatter(
+                    x=[data.loc[test_max_idx, config.POTENTIAL_COLUMN]],
+                    y=[data.loc[test_max_idx, config.CURRENT_COLUMN]],
+                    mode='markers',
+                    # marker=dict(size=12, color=config.REFERENCE_LINE_COLOR, symbol='triangle-up'),
+                    marker=dict(size=12, color='limegreen', symbol='triangle-up'),
+                    name=f'{filename} Max',
+                    hovertemplate=f'<b>{filename} Max</b><br>Potential: %{{x:.4f}} V<br>Current: %{{y:.2e}} A<extra></extra>',
+                    showlegend=False
                 ))
 
         # Update layout
