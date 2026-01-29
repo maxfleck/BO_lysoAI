@@ -184,6 +184,7 @@ The application reads CSV files with the format from CHI760D instruments:
 
 ## TO DO
 
+- excel does not save
 - plotly does not save or auto-save the plots
 - only show auto-processed rows in UI (?)
 - generalized data-reader
