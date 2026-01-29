@@ -11,6 +11,17 @@ Electrochemical Data Analysis Tool with GUI for processing cyclic voltammetry da
 - Export to CSV and Excel
 - Windows executable support via PyInstaller
 
+
+## Run it on Windows
+
+![Click on Release Tags](pictures/getexe0.png)
+
+![Select latest Release](pictures/getexe1.png)
+
+![Download .exe-file and run it :)](pictures/getexe1.png)
+
+
+
 ## Installation
 
 ### 1. Install Dependencies
