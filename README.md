@@ -14,11 +14,23 @@ Electrochemical Data Analysis Tool with GUI for processing cyclic voltammetry da
 
 ## Run it on Windows
 
+### 1) Click on Release Tags (on the right)
+
 ![Click on Release Tags](pictures/getexe0.png)
+
+### 2) Select latest Release
 
 ![Select latest Release](pictures/getexe1.png)
 
-![Download .exe-file and run it :)](pictures/getexe1.png)
+### 2) Download .exe-file
+
+![Download .exe-file and run it :)](pictures/getexe2.png)
+
+### 3) Run .exe-file (double-klick)
+
+### 4) Drag and Drop File from examples
+
+![Drag and Drop File from examples](pictures/window.png)
 
 
 
