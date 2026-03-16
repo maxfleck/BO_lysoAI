@@ -80,13 +80,14 @@ class PlotWidget(QWidget):
         )
         self._render_figure(fig)
 
-    def plot_data(self, reference_data, test_data_list):
+    def plot_data(self, reference_data, test_data_list, extra_traces=None):
         """
         Plot reference and test curves.
 
         Args:
             reference_data: DataFrame with Potential_V and Current_A columns
             test_data_list: List of tuples (data_df, filename)
+            extra_traces: Optional list of Plotly trace objects from metrics
         """
         fig = go.Figure()
 
@@ -102,37 +103,12 @@ class PlotWidget(QWidget):
             y=reference_data[config.CURRENT_COLUMN],
             mode='lines',
             name='Reference',
+            legendgroup='Reference',
             line=dict(
                 color=config.REFERENCE_LINE_COLOR,
                 width=config.REFERENCE_LINE_WIDTH
             ),
             hovertemplate='<b>Reference</b><br>Potential: %{x:.4f} V<br>Current: %{y:.2e} A<extra></extra>'
-        ))
-
-        # Find global min/max for reference
-        ref_min_idx = reference_data[config.CURRENT_COLUMN].idxmin()
-        ref_max_idx = reference_data[config.CURRENT_COLUMN].idxmax()
-
-        # Add min marker
-        fig.add_trace(go.Scatter(
-            x=[reference_data.loc[ref_min_idx, config.POTENTIAL_COLUMN]],
-            y=[reference_data.loc[ref_min_idx, config.CURRENT_COLUMN]],
-            mode='markers',
-            marker=dict(size=12, color='limegreen', symbol='triangle-down'),
-            name='Reference Min',
-            hovertemplate='<b>Reference Min</b><br>Potential: %{x:.4f} V<br>Current: %{y:.2e} A<extra></extra>',
-            showlegend=False
-        ))
-
-        # Add max marker
-        fig.add_trace(go.Scatter(
-            x=[reference_data.loc[ref_max_idx, config.POTENTIAL_COLUMN]],
-            y=[reference_data.loc[ref_max_idx, config.CURRENT_COLUMN]],
-            mode='markers',
-            marker=dict(size=12, color='limegreen', symbol='triangle-up'),
-            name='Reference Max',
-            hovertemplate='<b>Reference Max</b><br>Potential: %{x:.4f} V<br>Current: %{y:.2e} A<extra></extra>',
-            showlegend=False
         ))
 
         # Plot test curves
@@ -154,37 +130,10 @@ class PlotWidget(QWidget):
                     y=data[config.CURRENT_COLUMN],
                     mode='lines',
                     name=filename,
-                    line=dict(width=1.5),
+                    legendgroup=filename,
+                    line=dict(width=2.5),
                     opacity=config.TEST_LINE_ALPHA,
                     hovertemplate=f'<b>{filename}</b><br>Potential: %{{x:.4f}} V<br>Current: %{{y:.2e}} A<extra></extra>'
-                ))
-
-                # Find global min/max for this test curve
-                test_min_idx = data[config.CURRENT_COLUMN].idxmin()
-                test_max_idx = data[config.CURRENT_COLUMN].idxmax()
-
-                # Add min marker (triangle-down)
-                fig.add_trace(go.Scatter(
-                    x=[data.loc[test_min_idx, config.POTENTIAL_COLUMN]],
-                    y=[data.loc[test_min_idx, config.CURRENT_COLUMN]],
-                    mode='markers',
-                    # marker=dict(size=12, color=config.REFERENCE_LINE_COLOR, symbol='triangle-down'),
-                    marker=dict(size=12, color='limegreen', symbol='triangle-down'),
-                    name=f'{filename} Min',
-                    hovertemplate=f'<b>{filename} Min</b><br>Potential: %{{x:.4f}} V<br>Current: %{{y:.2e}} A<extra></extra>',
-                    showlegend=False
-                ))
-
-                # Add max marker (triangle-up)
-                fig.add_trace(go.Scatter(
-                    x=[data.loc[test_max_idx, config.POTENTIAL_COLUMN]],
-                    y=[data.loc[test_max_idx, config.CURRENT_COLUMN]],
-                    mode='markers',
-                    # marker=dict(size=12, color=config.REFERENCE_LINE_COLOR, symbol='triangle-up'),
-                    marker=dict(size=12, color='limegreen', symbol='triangle-up'),
-                    name=f'{filename} Max',
-                    hovertemplate=f'<b>{filename} Max</b><br>Potential: %{{x:.4f}} V<br>Current: %{{y:.2e}} A<extra></extra>',
-                    showlegend=False
                 ))
 
         # Update layout
@@ -212,6 +161,10 @@ class PlotWidget(QWidget):
             )
         )
 
+        # Add any extra traces from metrics
+        for trace in (extra_traces or []):
+            fig.add_trace(trace)
+
         self._render_figure(fig)
 
     def _render_figure(self, fig):
@@ -225,7 +178,7 @@ class PlotWidget(QWidget):
 
         # Configure interactivity
         plotly_config = {
-            'editable': False,  # Disabled to allow eraseshape to work
+            'editable': True,  # Disabled to allow eraseshape to work
             'displayModeBar': True,
             'modeBarButtonsToAdd': ['drawline', 'eraseshape'],
             'modeBarButtonsToRemove': ['lasso2d', 'select2d'],
@@ -286,15 +239,29 @@ document.addEventListener('DOMContentLoaded', function() {
         """Store line coordinates when drawn."""
         self.drawn_lines.append((x0, y0, x1, y1))
 
-    def calculate_all_intersections(self):
-        """Calculate intersections for all drawn lines."""
-        if not self.current_fig or not self.curve_data or not self.drawn_lines:
+    def calculate_all_intersections(self, mode='lines'):
+        """Calculate intersections for all drawn lines.
+
+        Args:
+            mode: 'lines' (default) finds intersections between drawn lines;
+                  'curves' finds intersections between drawn lines and CV curves.
+        """
+        if not self.current_fig or not self.drawn_lines:
             self.intersection_calculated.emit(0)
             return
 
-        count = 0
+        if mode == 'lines':
+            intersections = self._find_line_line_intersections()
+        else:  # 'curves'
+            if not self.curve_data:
+                self.intersection_calculated.emit(0)
+                return
+            intersections = []
+            for x0, y0, x1, y1 in self.drawn_lines:
+                intersections.extend(self._find_intersections(x0, y0, x1, y1))
+
+        # Render grey lines
         for x0, y0, x1, y1 in self.drawn_lines:
-            # Add the line itself in grey
             self.current_fig.add_trace(go.Scatter(
                 x=[x0, x1],
                 y=[y0, y1],
@@ -304,23 +271,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 hoverinfo='skip'
             ))
 
-            # Add intersection markers
-            intersections = self._find_intersections(x0, y0, x1, y1)
-            for name, x, y in intersections:
-                self.current_fig.add_trace(go.Scatter(
-                    x=[x],
-                    y=[y],
-                    mode='markers',
-                    marker=dict(size=14, color='yellow', symbol='x',
-                               line=dict(width=2, color='black')),
-                    name='Intersection',
-                    hovertemplate=f'<b>{name}</b><br>Potential: {x:.4f} V<br>Current: {y:.2e} A<extra></extra>',
-                    showlegend=False
-                ))
-                count += 1
+        # Render intersection markers
+        for name, x, y in intersections:
+            self.current_fig.add_trace(go.Scatter(
+                x=[x],
+                y=[y],
+                mode='markers',
+                marker=dict(size=14, color='yellow', symbol='x',
+                           line=dict(width=2, color='black')),
+                name='Intersection',
+                hovertemplate=f'<b>{name}</b><br>Potential: {x:.4f} V<br>Current: {y:.2e} A<extra></extra>',
+                showlegend=False
+            ))
 
         self._render_figure(self.current_fig)
-        self.intersection_calculated.emit(count)
+        self.intersection_calculated.emit(len(intersections))
+
+    def _find_line_line_intersections(self):
+        """Find intersections between all pairs of drawn lines.
+
+        Returns:
+            List of tuples (label, x, y) for each intersection found.
+        """
+        results = []
+        lines = self.drawn_lines
+        for i in range(len(lines)):
+            for j in range(i + 1, len(lines)):
+                x0, y0, x1, y1 = lines[i]
+                x2, y2, x3, y3 = lines[j]
+                pt = self._line_segment_intersection(x0, y0, x1, y1, x2, y2, x3, y3)
+                if pt is not None:
+                    results.append((f'Line {i+1} × Line {j+1}', pt[0], pt[1]))
+        return results
 
     def _find_intersections(self, x0, y0, x1, y1):
         """

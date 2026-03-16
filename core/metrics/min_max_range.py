@@ -55,10 +55,13 @@ class MinMaxDifferenceMetric(BaseMetric):
         y = data_df["Current_A"].values
         max_i, min_i = int(y.argmax()), int(y.argmin())
         style = dict(color=self.marker_color, symbol=self.marker_symbol, size=self.marker_size)
+        hover = '<b>%{text}</b><br>Potential: %{x:.4f} V<br>Current: %{y:.2e} A<extra></extra>'
         return [
             go.Scatter(x=[x[max_i]], y=[y[max_i]], mode='markers',
-                       marker=style, name='Max diff', showlegend=False),
+                       marker=style, name='Max', showlegend=False,
+                       text=['Max'], hovertemplate=hover),
             go.Scatter(x=[x[min_i]], y=[y[min_i]], mode='markers',
                        marker={**style, 'symbol': self.marker_symbol + '-open'},
-                       name='Min diff', showlegend=False),
+                       name='Min', showlegend=False,
+                       text=['Min'], hovertemplate=hover),
         ]

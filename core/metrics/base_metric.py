@@ -51,6 +51,18 @@ class BaseMetric(ABC):
         """
         pass
 
+    def get_column_names(self) -> list:
+        """
+        Return the CSV column name(s) produced by this metric.
+
+        Override when calculate() returns a dict to declare all column names.
+        Single-value metrics don't need to override this.
+
+        Returns:
+            list: Column names. Default: [self.name]
+        """
+        return [self.name]
+
     def requires_interpolation(self) -> bool:
         """
         Indicate whether this metric requires reference interpolation.

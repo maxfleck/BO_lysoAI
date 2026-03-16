@@ -42,12 +42,17 @@ class MetricsRegistry:
 
     def get_metric_names(self) -> list:
         """
-        Get list of all registered metric names.
+        Get list of all column names produced by registered metrics.
+
+        Multi-value metrics (calculate() returns a dict) contribute multiple names.
 
         Returns:
-            list: List of metric names
+            list: Flat list of column names
         """
-        return list(self.metrics.keys())
+        names = []
+        for metric in self.metrics.values():
+            names.extend(metric.get_column_names())
+        return names
 
     def calculate_all(self, data_df: pd.DataFrame, ref_data_df: pd.DataFrame) -> Dict[str, float]:
         """
@@ -58,16 +63,21 @@ class MetricsRegistry:
             ref_data_df: Reference data DataFrame with columns: Potential_V, Current_A
 
         Returns:
-            dict: Dictionary of metric name -> calculated value
+            dict: Dictionary of column name -> calculated value. Multi-value metrics
+                  contribute multiple keys when calculate() returns a dict.
         """
         results = {}
         for name, metric in self.metrics.items():
             try:
-                results[name] = metric.calculate(data_df, ref_data_df)
+                value = metric.calculate(data_df, ref_data_df)
+                if isinstance(value, dict):
+                    results.update(value)
+                else:
+                    results[name] = value
             except Exception as e:
-                # Log error and store NaN for failed calculations
                 print(f"Error calculating {name}: {str(e)}")
-                results[name] = np.nan
+                for col in metric.get_column_names():
+                    results[col] = np.nan
         return results
 
     def collect_plot_data(self, data_df: pd.DataFrame, ref_data_df: pd.DataFrame) -> list:

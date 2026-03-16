@@ -303,7 +303,26 @@ class MainWindow(QMainWindow):
                     except Exception as e:
                         self.status_log.log(f"Warning: Could not load {filename}: {str(e)}", 'WARNING')
 
-            self.plot_widget.plot_data(self.data_processor.reference_data, test_data)
+            all_traces = []
+            for data, filename in test_data:
+                if filename not in self.data_processor.all_plot_traces:
+                    self.data_processor.all_plot_traces[filename] = \
+                        self.metrics_registry.collect_plot_data(data, self.data_processor.reference_data)
+                for trace in self.data_processor.all_plot_traces[filename]:
+                    trace.update(legendgroup=filename)
+                all_traces.extend(self.data_processor.all_plot_traces[filename])
+
+            # Also add traces for the reference file itself
+            ref_filename = os.path.basename(self.data_processor.reference_filepath)
+            if ref_filename not in self.data_processor.all_plot_traces:
+                self.data_processor.all_plot_traces[ref_filename] = \
+                    self.metrics_registry.collect_plot_data(
+                        self.data_processor.reference_data, self.data_processor.reference_data)
+            for trace in self.data_processor.all_plot_traces[ref_filename]:
+                trace.update(legendgroup='Reference')
+            all_traces.extend(self.data_processor.all_plot_traces[ref_filename])
+
+            self.plot_widget.plot_data(self.data_processor.reference_data, test_data, extra_traces=all_traces)
 
     def save_results(self):
         """Save results to CSV and Excel."""
