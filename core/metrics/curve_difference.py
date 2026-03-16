@@ -116,7 +116,7 @@ class CurveDifferenceMetric(BaseMetric):
         return y_ref_interp
 
 
-    def calculate(self, data_df: pd.DataFrame, ref_data_df: pd.DataFrame) -> float:
+    def calculatexx(self, data_df: pd.DataFrame, ref_data_df: pd.DataFrame) -> float:
         """
         Calculate sum of absolute differences.
 
@@ -145,6 +145,8 @@ class CurveDifferenceMetric(BaseMetric):
         # Calculate differences
         y_diff = np.abs(y - y_ref_interp)
         yb_diff = np.abs(yb - yb_ref_interp)
+        y_diff = np.array(y - y_ref_interp)
+        yb_diff = np.array(yb - yb_ref_interp)        
 
         # Integrate using trapezoidal rule
         y_int = integrate.trapezoid(y_diff, x=x)
@@ -152,3 +154,58 @@ class CurveDifferenceMetric(BaseMetric):
 
         # Return sum of absolute integrated differences
         return np.abs(y_int) + np.abs(yb_int)
+    
+
+
+    def calculate(self, data_df: pd.DataFrame, ref_data_df: pd.DataFrame) -> float:
+        """
+        Calculate sum of absolute differences.
+
+        Calculates sum of absolute differences.
+
+        Args:
+            data_df: Test data with Potential_V and Current_A columns
+            ref_data_df: Reference data with Potential_V and Current_A columns
+
+        Returns:
+            float: Sum of absolute differences
+        """
+
+        # Split into forward and backward sweeps
+        dummy = self._split_forward_backward(  data_df["Potential_V"], 
+                                           data_df["Current_A"])
+        x , y, xb, yb = dummy
+        dummy_ref = self._split_forward_backward(  ref_data_df["Potential_V"], 
+                                                    ref_data_df["Current_A"])
+        x_ref, y_ref, xb_ref, yb_ref = dummy_ref
+
+        import matplotlib.pyplot as plt
+
+        plt.plot( data_df["Potential_V"], data_df["Current_A"], ".k" )
+        plt.plot( ref_data_df["Potential_V"], ref_data_df["Current_A"], ".k" )
+
+        # Integrate using trapezoidal rule
+        y_int = integrate.trapezoid(y, x=x)
+        yb_int = integrate.trapezoid(yb, x=xb)
+        y_ref_int = integrate.trapezoid(y_ref, x=x_ref)
+        yb_ref_int = integrate.trapezoid(yb_ref, x=xb_ref)       
+
+        area = y_ref_int + yb_ref_int - y_int - yb_int 
+
+        plt.plot( x, y, label=str(y_int) )
+        plt.plot( xb, yb, label=str(yb_int) )
+        plt.plot( x_ref, y_ref, label=str(y_ref_int) )
+        plt.plot( xb_ref, yb_ref, label=str(yb_ref_int) )
+
+        #print(x_ref, y_ref)        
+        #print(xb_ref, yb_ref)        
+
+        plt.legend()
+        plt.title(str(area))
+
+        plt.show()
+        plt.close()
+
+        # Return sum of absolute integrated differences
+        return area
+        #return np.abs(y_ref_int) + np.abs(yb_ref_int) - np.abs(y_int) - np.abs(yb_int)    

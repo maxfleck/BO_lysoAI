@@ -61,3 +61,20 @@ class BaseMetric(ABC):
             bool: True if metric needs interpolation (default), False otherwise
         """
         return True
+
+    def get_plot_data(self, _data_df: pd.DataFrame, _ref_data_df: pd.DataFrame) -> list:
+        """
+        Return Plotly traces to overlay on the plot for this file.
+
+        Override this method to draw lines, markers, etc. alongside the CV curve.
+        Each item in the returned list should be a plotly.graph_objects trace
+        (e.g. go.Scatter(...)) or a dict accepted by fig.add_trace().
+
+        Args:
+            data_df: Test data DataFrame with columns: Potential_V, Current_A
+            ref_data_df: Reference data DataFrame with columns: Potential_V, Current_A
+
+        Returns:
+            list: Plotly traces to add to the figure. Default: empty list.
+        """
+        return []

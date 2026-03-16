@@ -70,6 +70,25 @@ class MetricsRegistry:
                 results[name] = np.nan
         return results
 
+    def collect_plot_data(self, data_df: pd.DataFrame, ref_data_df: pd.DataFrame) -> list:
+        """
+        Collect plot traces from all registered metrics.
+
+        Args:
+            data_df: Test data DataFrame
+            ref_data_df: Reference data DataFrame
+
+        Returns:
+            list: All Plotly traces returned by metrics' get_plot_data()
+        """
+        traces = []
+        for name, metric in self.metrics.items():
+            try:
+                traces.extend(metric.get_plot_data(data_df, ref_data_df))
+            except Exception as e:
+                print(f"Error getting plot data from {name}: {e}")
+        return traces
+
     def clear(self) -> None:
         """Clear all registered metrics (useful for testing)."""
         self.metrics = {}

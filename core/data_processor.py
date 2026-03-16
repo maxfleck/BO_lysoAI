@@ -26,6 +26,7 @@ class DataProcessor:
         self.results = []
         self.all_processed_data = []  # Store for plotting
         self.full_data_df = None  # DataFrame containing all processed data
+        self.all_plot_traces = {}  # filename -> list of Plotly traces from metrics
 
 
     def set_reference(self, filepath: str) -> None:
@@ -99,6 +100,7 @@ class DataProcessor:
                 filename = os.path.basename(filepath)
                 processed_data.append((data, filename))
                 self.all_processed_data.append((data, filename))
+                self.all_plot_traces[filename] = self.metrics_registry.collect_plot_data(data, self.reference_data)
 
                 # Update the last result added by process_file()
                 # Add ReferenceFilename column and set is_reference flag
@@ -173,6 +175,7 @@ class DataProcessor:
         """Clear all results (useful for starting fresh)."""
         self.results = []
         self.all_processed_data = []
+        self.all_plot_traces = {}
 
     def get_all_processed_data(self) -> List[Tuple[pd.DataFrame, str]]:
         """
