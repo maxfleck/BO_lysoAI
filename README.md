@@ -185,10 +185,10 @@ The application reads CSV files with the format from CHI760D instruments:
 ## TO DO
 
 #### QUICK
-- make axis etc editable again !!!!
-- go from A to muA !!!!
+- make axis etc editable again (DONE)
+- go from A to muA (really???)
 - 600+ dpi !!!!
-- adjust line thickness etc !!!!
+- adjust line thickness etc (DONE)
 
 #### CHILL
 - excel does not save (add button or make the tool a project management tool) (DONE - auto save)
