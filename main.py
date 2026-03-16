@@ -10,6 +10,7 @@ from app.main_window import MainWindow
 from core.metrics_registry import MetricsRegistry
 from core.metrics.curve_difference import CurveDifferenceMetric
 from core.metrics.min_max_range import MinMaxDifferenceMetric
+from core.metrics.baseline_metric import BaselineMetric
 import config
 
 
@@ -21,6 +22,7 @@ def main():
     # Register existing metrics
     registry.register(CurveDifferenceMetric())
     registry.register(MinMaxDifferenceMetric())
+    registry.register(BaselineMetric())
 
     # TO ADD NEW METRICS: Create your metric class and register it here
     # Example:

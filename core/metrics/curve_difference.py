@@ -192,20 +192,6 @@ class CurveDifferenceMetric(BaseMetric):
 
         area = y_ref_int + yb_ref_int - y_int - yb_int 
 
-        plt.plot( x, y, label=str(y_int) )
-        plt.plot( xb, yb, label=str(yb_int) )
-        plt.plot( x_ref, y_ref, label=str(y_ref_int) )
-        plt.plot( xb_ref, yb_ref, label=str(yb_ref_int) )
-
-        #print(x_ref, y_ref)        
-        #print(xb_ref, yb_ref)        
-
-        plt.legend()
-        plt.title(str(area))
-
-        plt.show()
-        plt.close()
-
         # Return sum of absolute integrated differences
         return area
         #return np.abs(y_ref_int) + np.abs(yb_ref_int) - np.abs(y_int) - np.abs(yb_int)    

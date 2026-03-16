@@ -184,15 +184,22 @@ The application reads CSV files with the format from CHI760D instruments:
 
 ## TO DO
 
-- excel does not save
-- plotly does not save or auto-save the plots
-- only show auto-processed rows in UI (?)
+#### QUICK
+- make axis etc editable again !!!!
+- go from A to muA !!!!
+- 600+ dpi !!!!
+- adjust line thickness etc !!!!
+
+#### CHILL
+- excel does not save (add button or make the tool a project management tool) (DONE - auto save)
+- plotly does not save or auto-save the plots (DONE) --- do PDF
 - generalized data-reader
     - general purpose csv
     - binary files converter (upon drag and drop)
     - ...only convert binaries. Do not show them.
 - more dynamic column naming? -> nooo
 - improve metric names (Sum_Abs_Difference iiiih)
-- more interactive plot (adjust line thickness etc)
-- normalize integration with potential range
-- tangent for current diffs (max vs. base current)
+- more interactive plot (DONE)
+- normalize all integrations with potential range
+- tangent for current diffs (max vs. base current) (DONE)
+- 
