@@ -80,6 +80,10 @@ class PlotWidget(QWidget):
         )
         self._render_figure(fig)
 
+    @staticmethod
+    def _legend_label(filename, max_chars=20):
+        return filename if len(filename) <= max_chars else filename[:max_chars - 1] + '…'
+
     def plot_data(self, reference_data, test_data_list, extra_traces=None):
         """
         Plot reference and test curves.
@@ -124,7 +128,7 @@ class PlotWidget(QWidget):
                     x=data[config.POTENTIAL_COLUMN],
                     y=data[config.CURRENT_COLUMN],
                     mode='lines',
-                    name=filename,
+                    name=self._legend_label(filename),
                     legendgroup=filename,
                     line=dict(width=2.5),
                     opacity=config.TEST_LINE_ALPHA,
@@ -148,7 +152,7 @@ class PlotWidget(QWidget):
                 x=1.02
             ),
             hovermode='closest',
-            margin=dict(r=150),  # Extra margin for legend
+            margin=dict(r=200),  # Extra margin for legend
             dragmode='drawline',  # Auto-select draw line tool
             newshape=dict(
                 line=dict(color='red', width=2),

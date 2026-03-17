@@ -37,7 +37,6 @@ class MainWindow(QMainWindow):
         screen = QApplication.primaryScreen().availableGeometry()
         screen_height = screen.height()
         self.setGeometry(100, 0, screen_height, screen_height)
-        self.setMaximumWidth(screen_height)
 
         # Setup UI
         self.setup_ui()
