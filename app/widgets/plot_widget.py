@@ -73,8 +73,8 @@ class PlotWidget(QWidget):
         fig = go.Figure()
         fig.update_layout(
             title='Cyclic Voltammetry Curves',
-            xaxis_title='Potential (V)',
-            yaxis_title='Current (A)',
+            xaxis_title=f'Potential ({config.POTENTIAL_UNIT})',
+            yaxis_title=f'Current ({config.CURRENT_UNIT})',
             template=config.PLOT_TEMPLATE,
             showlegend=True,
         )
@@ -111,7 +111,7 @@ class PlotWidget(QWidget):
                 color=config.REFERENCE_LINE_COLOR,
                 width=config.REFERENCE_LINE_WIDTH
             ),
-            hovertemplate='<b>Reference</b><br>Potential: %{x:.4f} V<br>Current: %{y:.2e} A<extra></extra>'
+            hovertemplate=f'<b>Reference</b><br>Potential: %{{x:.4f}} {config.POTENTIAL_UNIT}<br>Current: %{{y:.2e}} {config.CURRENT_UNIT}<extra></extra>'
         ))
 
         # Plot test curves
@@ -132,7 +132,7 @@ class PlotWidget(QWidget):
                     legendgroup=filename,
                     line=dict(width=2.5),
                     opacity=config.TEST_LINE_ALPHA,
-                    hovertemplate=f'<b>{filename}</b><br>Potential: %{{x:.4f}} V<br>Current: %{{y:.2e}} A<extra></extra>'
+                    hovertemplate=f'<b>{filename}</b><br>Potential: %{{x:.4f}} {config.POTENTIAL_UNIT}<br>Current: %{{y:.2e}} {config.CURRENT_UNIT}<extra></extra>'
                 ))
 
         # Update layout
@@ -141,8 +141,8 @@ class PlotWidget(QWidget):
                 text='Cyclic Voltammetry Curves',
                 font=dict(size=16)
             ),
-            xaxis_title='Potential (V)',
-            yaxis_title='Current (A)',
+            xaxis_title=f'Potential ({config.POTENTIAL_UNIT})',
+            yaxis_title=f'Current ({config.CURRENT_UNIT})',
             template=config.PLOT_TEMPLATE,
             showlegend=True,
             legend=dict(
@@ -160,9 +160,27 @@ class PlotWidget(QWidget):
             )
         )
 
-        # Add any extra traces from metrics
+        # Add any extra traces from metrics, recording their indices for the toggle button
+        first_metric_idx = len(fig.data)
         for trace in (extra_traces or []):
             fig.add_trace(trace)
+        metric_indices = list(range(first_metric_idx, len(fig.data)))
+
+        if metric_indices:
+            fig.update_layout(updatemenus=[dict(
+                type="buttons",
+                direction="left",
+                x=1.0,
+                xanchor="right",
+                y=1.08,
+                yanchor="top",
+                buttons=[
+                    dict(label="Hide Metrics", method="restyle",
+                         args=[{"visible": False}, metric_indices]),
+                    dict(label="Show Metrics", method="restyle",
+                         args=[{"visible": True}, metric_indices]),
+                ]
+            )])
 
         self._render_figure(fig)
 
@@ -279,7 +297,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 marker=dict(size=14, color='yellow', symbol='x',
                            line=dict(width=2, color='black')),
                 name='Intersection',
-                hovertemplate=f'<b>{name}</b><br>Potential: {x:.4f} V<br>Current: {y:.2e} A<extra></extra>',
+                hovertemplate=f'<b>{name}</b><br>Potential: {x:.4f} {config.POTENTIAL_UNIT}<br>Current: {y:.2e} {config.CURRENT_UNIT}<extra></extra>',
                 showlegend=False
             ))
 

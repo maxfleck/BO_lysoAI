@@ -187,9 +187,7 @@ class MainWindow(QMainWindow):
                 self.status_log.log(f"Using existing reference: {os.path.basename(ref_file)}", 'INFO')
                 try:
                     # Only load reference data, don't add to results again
-                    from read_ferro_bare import read_ferro_bare_csv
-                    self.data_processor.reference_metadata, self.data_processor.reference_data = read_ferro_bare_csv(ref_file)
-                    self.data_processor.reference_filepath = ref_file
+                    self.data_processor.set_reference(ref_file)
                 except Exception as e:
                     self.status_log.log(f"Error loading existing reference: {str(e)}", 'ERROR')
                     QMessageBox.critical(self, "Error", f"Failed to load existing reference:\n{str(e)}")
@@ -290,7 +288,9 @@ class MainWindow(QMainWindow):
                 if os.path.exists(filepath):
                     try:
                         from read_ferro_bare import read_ferro_bare_csv
-                        _, data = read_ferro_bare_csv(filepath)
+                        _, raw = read_ferro_bare_csv(filepath)
+                        data = self.data_processor._scale_current(
+                            raw, self.data_processor._current_scale, self.data_processor._current_unit)
                         test_data.append((data, filename))
                     except Exception as e:
                         self.status_log.log(f"Warning: Could not load {filename}: {str(e)}", 'WARNING')

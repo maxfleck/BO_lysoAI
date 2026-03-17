@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from scipy import integrate
+import config
 from core.metrics.base_metric import BaseMetric
 
 
@@ -36,7 +37,13 @@ class BaselineMetric(BaseMetric):
         return "Baseline"
 
     def get_column_names(self) -> list:
-        return ["Forward_Area", "Backward_Area", "Forward_Peak", "Backward_Peak"]
+        u, v = config.CURRENT_UNIT, config.POTENTIAL_UNIT
+        return [
+            self._with_unit('Forward_Area',  u, v),
+            self._with_unit('Backward_Area', u, v),
+            self._with_unit('Forward_Peak',  u),
+            self._with_unit('Backward_Peak', u),
+        ]
 
     def get_description(self) -> str:
         return "Capacitive baseline fit — area and peak distance for forward and backward sweeps"
@@ -118,8 +125,8 @@ class BaselineMetric(BaseMetric):
         return a0f, a1f, x_f, y_f, a0b, a1b, x_b, y_b_orig
 
     def calculate(self, data_df: pd.DataFrame, ref_data_df: pd.DataFrame) -> dict:
-        x = data_df["Potential_V"].values
-        y = data_df["Current_A"].values
+        x = data_df[config.POTENTIAL_COLUMN].values
+        y = data_df[config.CURRENT_COLUMN].values
 
         a0f, a1f, x_f, y_f, a0b, a1b, x_b, y_b_orig = self._baselines(x, y)
 
@@ -129,16 +136,17 @@ class BaselineMetric(BaseMetric):
         baseline_b = a0b + a1b * x_b
         diff_b = y_b_orig - baseline_b
 
+        u, v = config.CURRENT_UNIT, config.POTENTIAL_UNIT
         return {
-            "Forward_Area":  float(integrate.trapezoid(np.abs(diff_f), x_f)),
-            "Backward_Area": float(integrate.trapezoid(np.abs(diff_b), x_b)),
-            "Forward_Peak":  float(np.max(diff_f)),
-            "Backward_Peak": float(-np.min(diff_b)),  # peak is most negative in original coords
+            self._with_unit('Forward_Area',  u, v): float(integrate.trapezoid(np.abs(diff_f), x_f)),
+            self._with_unit('Backward_Area', u, v): float(integrate.trapezoid(np.abs(diff_b), x_b)),
+            self._with_unit('Forward_Peak',  u):    float(np.max(diff_f)),
+            self._with_unit('Backward_Peak', u):    float(-np.min(diff_b)),
         }
 
     def get_plot_data(self, data_df: pd.DataFrame, ref_data_df: pd.DataFrame) -> list:
-        x = data_df["Potential_V"].values
-        y = data_df["Current_A"].values
+        x = data_df[config.POTENTIAL_COLUMN].values
+        y = data_df[config.CURRENT_COLUMN].values
 
         a0f, a1f, x_f, y_f, a0b, a1b, x_b, y_b_orig = self._baselines(x, y)
 
@@ -148,7 +156,7 @@ class BaselineMetric(BaseMetric):
         x_peak_f = x_f[int(np.argmax(diff_f))]
         x_peak_b = x_b[int(np.argmin(diff_b))]
 
-        hover = '<b>%{text}</b><br>Potential: %{x:.4f} V<br>Current: %{y:.2e} A<extra></extra>'
+        hover = f'<b>%{{text}}</b><br>Potential: %{{x:.4f}} {config.POTENTIAL_UNIT}<br>Current: %{{y:.2e}} {config.CURRENT_UNIT}<extra></extra>'
         return [
             go.Scatter(
                 x=x, y=a0f + a1f * x,
@@ -177,7 +185,7 @@ class BaselineMetric(BaseMetric):
                 opacity=0.8,
                 zorder=self.zorder,
                 showlegend=False,
-                hovertemplate='<b>Fwd peak</b><br>Potential: %{x:.4f} V<br>Current: %{y:.2e} A<extra></extra>',
+                hovertemplate=f'<b>Fwd peak</b><br>Potential: %{{x:.4f}} {config.POTENTIAL_UNIT}<br>Current: %{{y:.2e}} {config.CURRENT_UNIT}<extra></extra>',
             ),
             go.Scatter(
                 x=[x_peak_b], y=[a0b + a1b * x_peak_b],
@@ -186,6 +194,6 @@ class BaselineMetric(BaseMetric):
                 opacity=0.8,
                 zorder=self.zorder,
                 showlegend=False,
-                hovertemplate='<b>Bwd peak</b><br>Potential: %{x:.4f} V<br>Current: %{y:.2e} A<extra></extra>',
+                hovertemplate=f'<b>Bwd peak</b><br>Potential: %{{x:.4f}} {config.POTENTIAL_UNIT}<br>Current: %{{y:.2e}} {config.CURRENT_UNIT}<extra></extra>',
             ),
         ]

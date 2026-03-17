@@ -51,6 +51,13 @@ class BaseMetric(ABC):
         """
         pass
 
+    @staticmethod
+    def _with_unit(name: str, *units: str) -> str:
+        """Build a unit-annotated column name.
+        Example: _with_unit('Forward_Area', 'µA', 'V') → 'Forward_Area (µA·V)'
+        """
+        return f"{name} ({'·'.join(units)})" if units else name
+
     def get_column_names(self) -> list:
         """
         Return the CSV column name(s) produced by this metric.

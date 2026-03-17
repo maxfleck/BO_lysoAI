@@ -6,6 +6,7 @@ Calculates the sum of absolute differences between test curve and reference curv
 
 import numpy as np
 import pandas as pd
+import config
 from core.metrics.base_metric import BaseMetric
 from scipy import integrate
 
@@ -15,6 +16,9 @@ class CurveDifferenceMetric(BaseMetric):
     def get_name(self) -> str:
         """Return metric name for CSV column."""
         return "Sum_Abs_Difference"
+
+    def get_column_names(self) -> list:
+        return [self._with_unit('Sum_Abs_Difference', config.CURRENT_UNIT, config.POTENTIAL_UNIT)]
 
     def get_description(self) -> str:
         """Return human-readable description."""
@@ -157,7 +161,7 @@ class CurveDifferenceMetric(BaseMetric):
     
 
 
-    def calculate(self, data_df: pd.DataFrame, ref_data_df: pd.DataFrame) -> float:
+    def calculate(self, data_df: pd.DataFrame, ref_data_df: pd.DataFrame) -> dict:
         """
         Calculate sum of absolute differences.
 
@@ -168,21 +172,16 @@ class CurveDifferenceMetric(BaseMetric):
             ref_data_df: Reference data with Potential_V and Current_A columns
 
         Returns:
-            float: Sum of absolute differences
+            dict: Sum of absolute differences with unit-aware key
         """
 
         # Split into forward and backward sweeps
-        dummy = self._split_forward_backward(  data_df["Potential_V"], 
-                                           data_df["Current_A"])
-        x , y, xb, yb = dummy
-        dummy_ref = self._split_forward_backward(  ref_data_df["Potential_V"], 
-                                                    ref_data_df["Current_A"])
+        dummy = self._split_forward_backward(data_df[config.POTENTIAL_COLUMN],
+                                             data_df[config.CURRENT_COLUMN])
+        x, y, xb, yb = dummy
+        dummy_ref = self._split_forward_backward(ref_data_df[config.POTENTIAL_COLUMN],
+                                                 ref_data_df[config.CURRENT_COLUMN])
         x_ref, y_ref, xb_ref, yb_ref = dummy_ref
-
-        import matplotlib.pyplot as plt
-
-        plt.plot( data_df["Potential_V"], data_df["Current_A"], ".k" )
-        plt.plot( ref_data_df["Potential_V"], ref_data_df["Current_A"], ".k" )
 
         # Integrate using trapezoidal rule
         y_int = integrate.trapezoid(y, x=x)
@@ -192,6 +191,5 @@ class CurveDifferenceMetric(BaseMetric):
 
         area = y_ref_int + yb_ref_int - y_int - yb_int 
 
-        # Return sum of absolute integrated differences
-        return area
+        return {self._with_unit('Sum_Abs_Difference', config.CURRENT_UNIT, config.POTENTIAL_UNIT): area}
         #return np.abs(y_ref_int) + np.abs(yb_ref_int) - np.abs(y_int) - np.abs(yb_int)    

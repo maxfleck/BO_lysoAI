@@ -7,6 +7,7 @@ import pandas as pd
 from typing import Tuple, List, Callable, Optional
 from read_ferro_bare import read_ferro_bare_csv
 from core.metrics_registry import MetricsRegistry
+import config
 
 
 class DataProcessor:
@@ -27,12 +28,35 @@ class DataProcessor:
         self.all_processed_data = []  # Store for plotting
         self.full_data_df = None  # DataFrame containing all processed data
         self.all_plot_traces = {}  # filename -> list of Plotly traces from metrics
+        self._current_scale = 1.0
+        self._current_unit = 'A'
 
+
+    @staticmethod
+    def _detect_current_unit(raw_df) -> Tuple[float, str]:
+        """Return (scale_factor, unit_label) for the best SI prefix based on reference data."""
+        max_abs = raw_df["Current_A"].abs().max()
+        for factor, label in [(1.0, 'A'), (1e3, 'mA'), (1e6, 'µA'), (1e9, 'nA'), (1e12, 'pA')]:
+            if max_abs * factor >= 1.0:
+                return factor, label
+        return 1e12, 'pA'
+
+    @staticmethod
+    def _scale_current(df: pd.DataFrame, scale: float, unit: str) -> pd.DataFrame:
+        """Return a copy of df with Current_A scaled and renamed to Current_{unit}."""
+        new_col = f"Current_{unit}"
+        df = df.copy()
+        df[new_col] = df["Current_A"] * scale
+        return df.drop(columns=["Current_A"])
 
     def set_reference(self, filepath: str) -> None:
-        """Load and set reference file."""
-        self.reference_metadata, self.reference_data = read_ferro_bare_csv(filepath)
+        """Load and set reference file, auto-detecting current unit from data."""
+        self.reference_metadata, raw_ref = read_ferro_bare_csv(filepath)
         self.reference_filepath = filepath
+        self._current_scale, self._current_unit = self._detect_current_unit(raw_ref)
+        config.CURRENT_COLUMN = f"Current_{self._current_unit}"
+        config.CURRENT_UNIT = self._current_unit
+        self.reference_data = self._scale_current(raw_ref, self._current_scale, self._current_unit)
 
     def load_existing_data(self, directory: str) -> None:
         """
@@ -60,8 +84,9 @@ class DataProcessor:
         Returns:
             Tuple of (metadata, data) DataFrames
         """
-        # Read CSV
-        metadata, data = read_ferro_bare_csv(filepath)
+        # Read CSV and scale current to match reference unit
+        metadata, raw_data = read_ferro_bare_csv(filepath)
+        data = self._scale_current(raw_data, self._current_scale, self._current_unit)
 
         # Calculate all metrics
         metrics = self.metrics_registry.calculate_all(data, self.reference_data)
