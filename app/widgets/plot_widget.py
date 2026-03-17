@@ -94,8 +94,7 @@ class PlotWidget(QWidget):
         # Store curve data for intersection calculations
         self.curve_data = {'Reference': reference_data}
         for data, filename in test_data_list:
-            if 'BARE' not in filename.upper() and 'REFERENCE' not in filename.upper():
-                self.curve_data[filename] = data
+            self.curve_data[filename] = data
 
         # Plot reference curve with thick magenta line
         fig.add_trace(go.Scatter(
@@ -119,10 +118,6 @@ class PlotWidget(QWidget):
                 colors = pio.templates['plotly'].layout.colorway
 
             for i, (data, filename) in enumerate(test_data_list):
-                # Skip reference files
-                if 'BARE' in filename.upper() or 'REFERENCE' in filename.upper():
-                    continue
-
                 color = colors[i % len(colors)]
 
                 fig.add_trace(go.Scatter(

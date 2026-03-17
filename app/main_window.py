@@ -198,25 +198,18 @@ class MainWindow(QMainWindow):
             else:
                 self.status_log.log("Warning: Could not find existing reference file", 'WARNING')
 
-            # Process only the dropped files (don't auto-process all files)
-            # Filter out reference, data.csv, and already-processed files
-
-            # Check which files are already in the DataFrame
-            existing_filenames = set()
-            if self.data_processor.full_data_df is not None and 'Filename' in self.data_processor.full_data_df.columns:
-                existing_filenames = set(self.data_processor.full_data_df['Filename'].tolist())
-
+            # Filter out reference and data.csv; always reprocess all other files
             files_to_process = [
                 f for f in filepaths
                 if f != ref_file
                 and os.path.basename(f).lower() != 'data.csv'
-                and os.path.basename(f) not in existing_filenames
             ]
 
-            # Log skipped files
-            skipped = [os.path.basename(f) for f in filepaths if os.path.basename(f) in existing_filenames]
-            if skipped:
-                self.status_log.log(f"Skipping already processed: {', '.join(skipped)}", 'INFO')
+            # Remove stale rows for files about to be reprocessed to avoid duplicates
+            if self.data_processor.full_data_df is not None and files_to_process:
+                reprocess_names = {os.path.basename(f) for f in files_to_process}
+                df = self.data_processor.full_data_df
+                self.data_processor.full_data_df = df[~df['Filename'].isin(reprocess_names)].reset_index(drop=True)
 
         # Process files if any
         if files_to_process:
