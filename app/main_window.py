@@ -99,16 +99,7 @@ class MainWindow(QMainWindow):
         bottom_layout = QHBoxLayout(bottom_widget)
         bottom_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Button column
-        button_column = QVBoxLayout()
-        self.intersection_btn = QPushButton("Calculate\nIntersections")
-        self.intersection_btn.setMinimumHeight(60)
-        self.intersection_btn.clicked.connect(self._calculate_intersections)
-        button_column.addWidget(self.intersection_btn)
-        button_column.addStretch()  # Push buttons to top
-
-        bottom_layout.addWidget(self.results_table, 90)
-        bottom_layout.addLayout(button_column, 10)
+        bottom_layout.addWidget(self.results_table)
 
         splitter = QSplitter(Qt.Orientation.Vertical)
         splitter.addWidget(self.plot_widget)
@@ -128,7 +119,7 @@ class MainWindow(QMainWindow):
         self.plot_widget.save_error.connect(
             lambda msg: self.status_log.log(msg, 'ERROR')
         )
-        self.plot_widget.intersection_calculated.connect(self._on_intersections_calculated)
+        self.plot_widget.intersection_calculated.connect(self._on_intersections_calculated)  # logs result
 
     def on_files_dropped(self, filepaths):
         """

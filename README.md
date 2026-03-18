@@ -186,9 +186,13 @@ The application reads CSV files with the format from CHI760D instruments:
 
 #### QUICK
 - make axis etc editable again (DONE)
-- go from A to muA (really???)
+- go from A to muA
+- dynamic window sizes (DONE)
+- untoggle additional lines
+- generate a exe plot time row thing
 - 600+ dpi !!!!
 - adjust line thickness etc (DONE)
+- check for filname based filters (remove them)
 
 #### CHILL
 - excel does not save (add button or make the tool a project management tool) (DONE - auto save)

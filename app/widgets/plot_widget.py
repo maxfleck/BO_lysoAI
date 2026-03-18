@@ -25,6 +25,11 @@ class PlotBridge(QObject):
         """Called from JavaScript when a line is drawn."""
         self.plot_widget.handle_line_drawn(x0, y0, x1, y1)
 
+    @pyqtSlot()
+    def calculate_intersections(self):
+        """Called from JavaScript modebar button."""
+        self.plot_widget.calculate_all_intersections()
+
 
 class PlotWidget(QWidget):
     """Widget for embedded interactive Plotly plotting."""
@@ -52,6 +57,9 @@ class PlotWidget(QWidget):
 
         # Store drawn lines for intersection calculations
         self.drawn_lines = []  # List of (x0, y0, x1, y1) tuples
+
+        # Indices of metric overlay traces in the current figure (for modebar toggle)
+        self._metric_indices = []
 
         # Setup QWebChannel for JS-Python communication
         self.channel = QWebChannel()
@@ -160,27 +168,11 @@ class PlotWidget(QWidget):
             )
         )
 
-        # Add any extra traces from metrics, recording their indices for the toggle button
+        # Add any extra traces from metrics, recording their indices for the modebar toggle
         first_metric_idx = len(fig.data)
         for trace in (extra_traces or []):
             fig.add_trace(trace)
-        metric_indices = list(range(first_metric_idx, len(fig.data)))
-
-        if metric_indices:
-            fig.update_layout(updatemenus=[dict(
-                type="buttons",
-                direction="left",
-                x=1.0,
-                xanchor="right",
-                y=1.08,
-                yanchor="top",
-                buttons=[
-                    dict(label="Hide Metrics", method="restyle",
-                         args=[{"visible": False}, metric_indices]),
-                    dict(label="Show Metrics", method="restyle",
-                         args=[{"visible": True}, metric_indices]),
-                ]
-            )])
+        self._metric_indices = list(range(first_metric_idx, len(fig.data)))
 
         self._render_figure(fig)
 
@@ -193,18 +185,10 @@ class PlotWidget(QWidget):
         """
         self.current_fig = fig
 
-        # Configure interactivity
+        # Minimal initial config — custom buttons are injected via JS after first render
         plotly_config = {
-            'editable': True,  # Disabled to allow eraseshape to work
+            'editable': True,
             'displayModeBar': True,
-            'modeBarButtonsToAdd': ['drawline', 'eraseshape'],
-            'modeBarButtonsToRemove': ['lasso2d', 'select2d'],
-            'toImageButtonOptions': {
-                'format': 'png',
-                'height': config.PLOT_EXPORT_HEIGHT,
-                'width': config.PLOT_EXPORT_WIDTH,
-                'scale': config.PLOT_EXPORT_SCALE
-            },
             'displaylogo': False,
         }
 
@@ -215,36 +199,77 @@ class PlotWidget(QWidget):
             full_html=True
         )
 
-        # Inject JavaScript for QWebChannel communication
-        webchannel_js = '''
+        # Inject JavaScript for QWebChannel communication + custom modebar buttons
+        metric_indices_js = self._metric_indices  # captured for injection
+        webchannel_js = f'''
 <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
 <script>
 var bridge = null;
-new QWebChannel(qt.webChannelTransport, function(channel) {
+new QWebChannel(qt.webChannelTransport, function(channel) {{
     bridge = channel.objects.bridge;
-});
+}});
+
+// Metric trace indices for the toggle button
+var metricIndices = {metric_indices_js};
+
+// Custom modebar buttons — add more objects here to extend
+var customModebarButtons = [
+    {{
+        name: 'toggle-metrics',
+        title: 'Toggle metric overlays',
+        icon: Plotly.Icons.drawrect,
+        click: function(gd) {{
+            if (!metricIndices.length) return;
+            var allVisible = metricIndices.every(function(i) {{
+                return gd.data[i].visible !== false;
+            }});
+            Plotly.restyle(gd, {{visible: allVisible ? false : true}}, metricIndices);
+        }}
+    }},
+    {{
+        name: 'calc-intersections',
+        title: 'Calculate intersections',
+        icon: Plotly.Icons.drawcircle,
+        click: function(gd) {{ if (bridge) bridge.calculate_intersections(); }}
+    }}
+];
 
 // Track shapes to detect new ones
 var previousShapeCount = 0;
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function() {{
     var plotDiv = document.getElementsByClassName('plotly-graph-div')[0];
-    if (plotDiv) {
-        plotDiv.on('plotly_relayout', function(data) {
-            if (bridge && plotDiv.layout && plotDiv.layout.shapes) {
+    if (plotDiv) {{
+        // Apply custom modebar config immediately (Plotly CDN is a blocking script,
+        // so plotDiv.data and plotDiv.layout are already populated by DOMContentLoaded)
+        Plotly.react(plotDiv, plotDiv.data, plotDiv.layout, {{
+            editable: true,
+            displayModeBar: true,
+            displaylogo: false,
+            modeBarButtonsToAdd: customModebarButtons.concat(['drawline', 'eraseshape']),
+            modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+            toImageButtonOptions: {{
+                format: 'png',
+                height: {config.PLOT_EXPORT_HEIGHT},
+                width: {config.PLOT_EXPORT_WIDTH},
+                scale: {config.PLOT_EXPORT_SCALE}
+            }}
+        }});
+
+        plotDiv.on('plotly_relayout', function(data) {{
+            if (bridge && plotDiv.layout && plotDiv.layout.shapes) {{
                 var shapes = plotDiv.layout.shapes;
-                if (shapes.length > previousShapeCount) {
-                    // New shape added
+                if (shapes.length > previousShapeCount) {{
                     var last = shapes[shapes.length - 1];
-                    if (last && last.type === 'line') {
+                    if (last && last.type === 'line') {{
                         bridge.on_line_drawn(last.x0, last.y0, last.x1, last.y1);
-                    }
-                }
+                    }}
+                }}
                 previousShapeCount = shapes.length;
-            }
-        });
-    }
-});
+            }}
+        }});
+    }}
+}});
 </script>
 '''
         # Insert webchannel script before closing body tag

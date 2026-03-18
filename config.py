@@ -27,9 +27,12 @@ WINDOW_HEIGHT = 800
 STATUS_LOG_HEIGHT = 150
 DROP_ZONE_MIN_HEIGHT = 75
 
-# Data column names
+# Data column names (CURRENT_COLUMN and CURRENT_UNIT are updated at runtime
+# after the reference file is loaded and the SI prefix is auto-detected)
 POTENTIAL_COLUMN = "Potential_V"
-CURRENT_COLUMN = "Current_A"
+POTENTIAL_UNIT   = "V"
+CURRENT_COLUMN   = "Current_A"   # updated at runtime, e.g. "Current_µA"
+CURRENT_UNIT     = "A"           # updated at runtime, e.g. "µA"
 REFERENCE_FLAG_COLUMN = "is_reference"
 REFERENCE_FILENAME_COLUMN = "ReferenceFilename"
 FILENAME_COLUMN = "Filename"
