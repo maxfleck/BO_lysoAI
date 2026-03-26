@@ -4,9 +4,9 @@ Main application window.
 
 import os
 import glob
-from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QApplication,
+from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QApplication,
                               QProgressBar, QSplitter, QMessageBox, QLabel, QPushButton)
-from PyQt6.QtCore import Qt
+from PySide6.QtCore import Qt
 from app.widgets.drop_zone import DropZoneWidget
 from app.widgets.plot_widget import PlotWidget
 from app.widgets.results_table import ResultsTableWidget

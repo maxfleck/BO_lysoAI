@@ -2,11 +2,11 @@
 Interactive plot widget using Plotly for displaying electrochemical curves.
 """
 
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy, QFileDialog
-from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWebEngineCore import QWebEngineProfile
-from PyQt6.QtWebChannel import QWebChannel
-from PyQt6.QtCore import pyqtSignal, QObject, pyqtSlot
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy, QFileDialog
+from PySide6.QtWebEngineWidgets import QWebEngineView
+from PySide6.QtWebEngineCore import QWebEngineProfile
+from PySide6.QtWebChannel import QWebChannel
+from PySide6.QtCore import Signal, QObject, Slot
 import plotly.graph_objects as go
 import plotly.io as pio
 import numpy as np
@@ -20,22 +20,29 @@ class PlotBridge(QObject):
         super().__init__()
         self.plot_widget = plot_widget
 
-    @pyqtSlot(float, float, float, float)
+    @Slot(float, float, float, float)
     def on_line_drawn(self, x0, y0, x1, y1):
         """Called from JavaScript when a line is drawn."""
         self.plot_widget.handle_line_drawn(x0, y0, x1, y1)
 
-    @pyqtSlot()
+    @Slot()
     def calculate_intersections(self):
         """Called from JavaScript modebar button."""
         self.plot_widget.calculate_all_intersections()
+
+    @Slot(str)
+    def calculate_intersections_for(self, filenames_json):
+        """Called from JavaScript with JSON list of currently visible legendgroups."""
+        import json
+        active = set(json.loads(filenames_json))
+        self.plot_widget.calculate_all_intersections(active_legendgroups=active)
 
 
 class PlotWidget(QWidget):
     """Widget for embedded interactive Plotly plotting."""
 
-    save_error = pyqtSignal(str)  # Signal to report save errors
-    intersection_calculated = pyqtSignal(int)  # Reports number of intersections found
+    save_error = Signal(str)  # Signal to report save errors
+    intersection_calculated = Signal(int)  # Reports number of intersections found
 
     def __init__(self):
         """Initialize plot widget."""
@@ -58,8 +65,8 @@ class PlotWidget(QWidget):
         # Store drawn lines for intersection calculations
         self.drawn_lines = []  # List of (x0, y0, x1, y1) tuples
 
-        # Indices of metric overlay traces in the current figure (for modebar toggle)
-        self._metric_indices = []
+        # Index where metric overlay traces start in the current figure (for modebar toggle)
+        self._first_metric_idx = 0
 
         # Setup QWebChannel for JS-Python communication
         self.channel = QWebChannel()
@@ -168,11 +175,11 @@ class PlotWidget(QWidget):
             )
         )
 
-        # Add any extra traces from metrics, recording their indices for the modebar toggle
+        # Add any extra traces from metrics, recording split point for the modebar toggle
         first_metric_idx = len(fig.data)
         for trace in (extra_traces or []):
             fig.add_trace(trace)
-        self._metric_indices = list(range(first_metric_idx, len(fig.data)))
+        self._first_metric_idx = first_metric_idx
 
         self._render_figure(fig)
 
@@ -200,7 +207,7 @@ class PlotWidget(QWidget):
         )
 
         # Inject JavaScript for QWebChannel communication + custom modebar buttons
-        metric_indices_js = self._metric_indices  # captured for injection
+        first_metric_idx = self._first_metric_idx
         webchannel_js = f'''
 <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
 <script>
@@ -209,8 +216,8 @@ new QWebChannel(qt.webChannelTransport, function(channel) {{
     bridge = channel.objects.bridge;
 }});
 
-// Metric trace indices for the toggle button
-var metricIndices = {metric_indices_js};
+// Index where metric traces start; main curve traces are 0..firstMetricIdx-1
+var firstMetricIdx = {first_metric_idx};
 
 // Custom modebar buttons — add more objects here to extend
 var customModebarButtons = [
@@ -219,18 +226,36 @@ var customModebarButtons = [
         title: 'Toggle metric overlays',
         icon: Plotly.Icons.drawrect,
         click: function(gd) {{
-            if (!metricIndices.length) return;
-            var allVisible = metricIndices.every(function(i) {{
-                return gd.data[i].visible !== false;
+            var visibleGroups = new Set();
+            for (var i = 0; i < firstMetricIdx; i++) {{
+                var v = gd.data[i].visible;
+                if (v !== false && v !== 'legendonly') visibleGroups.add(gd.data[i].legendgroup);
+            }}
+            var toToggle = [];
+            for (var i = firstMetricIdx; i < gd.data.length; i++) {{
+                if (visibleGroups.has(gd.data[i].legendgroup)) toToggle.push(i);
+            }}
+            if (!toToggle.length) return;
+            var anyVisible = toToggle.some(function(i) {{
+                var v = gd.data[i].visible;
+                return v !== false && v !== 'legendonly';
             }});
-            Plotly.restyle(gd, {{visible: allVisible ? false : true}}, metricIndices);
+            Plotly.restyle(gd, {{visible: anyVisible ? false : true}}, toToggle);
         }}
     }},
     {{
         name: 'calc-intersections',
         title: 'Calculate intersections',
         icon: Plotly.Icons.drawcircle,
-        click: function(gd) {{ if (bridge) bridge.calculate_intersections(); }}
+        click: function(gd) {{
+            if (!bridge) return;
+            var visible = [];
+            for (var i = 0; i < firstMetricIdx; i++) {{
+                var v = gd.data[i].visible;
+                if (v !== false && v !== 'legendonly') visible.push(gd.data[i].legendgroup);
+            }}
+            bridge.calculate_intersections_for(JSON.stringify(visible));
+        }}
     }}
 ];
 
@@ -281,7 +306,7 @@ document.addEventListener('DOMContentLoaded', function() {{
         """Store line coordinates when drawn."""
         self.drawn_lines.append((x0, y0, x1, y1))
 
-    def calculate_all_intersections(self, mode='lines'):
+    def calculate_all_intersections(self, mode='lines', active_legendgroups=None):
         """Calculate intersections for all drawn lines.
 
         Args:
@@ -325,6 +350,13 @@ document.addEventListener('DOMContentLoaded', function() {{
                 hovertemplate=f'<b>{name}</b><br>Potential: {x:.4f} {config.POTENTIAL_UNIT}<br>Current: {y:.2e} {config.CURRENT_UNIT}<extra></extra>',
                 showlegend=False
             ))
+
+        # Restore visibility state: mark traces hidden by the user before re-render
+        if active_legendgroups is not None:
+            for trace in self.current_fig.data:
+                lg = getattr(trace, 'legendgroup', None) or ''
+                if lg and lg not in active_legendgroups:
+                    trace.visible = 'legendonly'
 
         self._render_figure(self.current_fig)
         self.intersection_calculated.emit(len(intersections))

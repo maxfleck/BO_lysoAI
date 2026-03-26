@@ -2,9 +2,9 @@
 Results table widget for displaying analysis results.
 """
 
-from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor
+from PySide6.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 import pandas as pd
 import config
 

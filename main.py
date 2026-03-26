@@ -5,7 +5,7 @@ Main entry point for the application.
 """
 
 import sys
-from PyQt6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 from app.main_window import MainWindow
 from core.metrics_registry import MetricsRegistry
 from core.metrics.curve_difference import CurveDifferenceMetric

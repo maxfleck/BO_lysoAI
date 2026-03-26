@@ -2,15 +2,15 @@
 Drop zone widget for drag-and-drop file interface.
 """
 
-from PyQt6.QtWidgets import QWidget, QLabel, QVBoxLayout
-from PyQt6.QtCore import pyqtSignal, Qt
+from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout
+from PySide6.QtCore import Signal, Qt
 import config
 
 
 class DropZoneWidget(QWidget):
     """Widget for drag-and-drop file upload."""
 
-    files_dropped = pyqtSignal(list)
+    files_dropped = Signal(list)
 
     def __init__(self):
         """Initialize drop zone widget."""

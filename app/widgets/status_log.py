@@ -2,7 +2,7 @@
 Status log widget for displaying messages and logs.
 """
 
-from PyQt6.QtWidgets import QTextEdit
+from PySide6.QtWidgets import QTextEdit
 from datetime import datetime
 import config
 
