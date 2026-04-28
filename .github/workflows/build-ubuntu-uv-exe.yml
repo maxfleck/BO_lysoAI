@@ -30,7 +30,7 @@ jobs:
 
       - name: Build exe with PyInstaller
         run: |
-          uv run pyinstaller ferroci_analyzer.spec
+          uv run pyinstaller ferroci_analyzer_uv.spec
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
